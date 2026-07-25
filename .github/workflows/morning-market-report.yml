@@ -1,0 +1,46 @@
+name: 全球市场晨报
+
+on:
+  schedule:
+    - cron: "0 0 * * 1-5" # 北京时间工作日 08:00
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: "强制运行（仅用于非交易日测试）"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  market-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v5
+
+      - name: 设置 Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 生成并推送晨报
+        env:
+          ANSPIRE_API_KEYS: ${{ secrets.ANSPIRE_API_KEYS }}
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          FEISHU_WEBHOOK_KEYWORD: ${{ secrets.FEISHU_WEBHOOK_KEYWORD }}
+          MARKET_REVIEW_REGION: both
+          REPORT_LANGUAGE: zh
+        run: |
+          if [ "${{ inputs.force_run }}" = "true" ]; then
+            python main.py --market-review --force-run
+          else
+            python main.py --market-review
+          fi
